@@ -105,7 +105,7 @@ def solve_sudoku(grid: List[List[int]], verbose=True, all_solutions=False, **kwa
             edited = False  # if no edits, either done or stuck
             for i in range(game.n):
                 for j in range(game.n):
-                    if game.grid[i][j] == 0:
+                    if game.grid[i][j] == game._null_digit:
                         solved = False
                         options = game.candidates[i][j]
                         if len(options) == 0:
@@ -171,6 +171,97 @@ def solve_sudoku(grid: List[List[int]], verbose=True, all_solutions=False, **kwa
         }
     return solution_set, solved, info
 
+def lsolve_sudoku(grid: List[List[int]], verbose=True, all_solutions=False, **kwargs):
+    """
+    idea based on https://dev.to/aspittel/how-i-finally-wrote-a-sudoku-solver-177g
+    Try each step until failure, and repeat:
+    1) write numbers with only have 1 option
+    2) write candidates with only 1 option/ 2 pairs
+    3) with multiple options, take a guess and branch (backtrack)
+    """
+    def solve(game0: Sudoku, progress_factor=1.0):
+        nonlocal calls, depth_max, progress, progress_update, update_increment
+        stacc = [(game0, 0)]
+        while stacc:
+            game, depth = stacc.pop()
+            calls += 1
+            depth_max = max(depth, depth_max)
+            solved = False
+            while not solved:
+                solved = True  # assume solved
+                edited = False  # if no edits, either done or stuck
+                deadend = False
+                for i in range(game.n):
+                    if deadend: break
+                    for j in range(game.n):
+                        if game.grid[i][j] == game._null_digit:
+                            solved = False
+                            options = game.candidates[i][j]
+                            if len(options) == 0:
+                                progress += progress_factor
+                                deadend = True #return False  # this call is going nowhere
+                                break
+                            elif len(options) == 1:  # Step 1
+                                game.place_and_erase(
+                                    i, j, list(options)[0])  # Step 2
+                                edited = True
+                if deadend: break
+                if not edited:  # changed nothing in this round -> either done or stuck
+                    if solved:
+                        progress += progress_factor
+                        yield grid2str(game.grid.copy())
+                        break
+                    else:
+                        # Find the box with the least number of options and take a guess
+                        # The place_and_erase() call changes this dynamically
+                        min_guesses = (len(game.candidates[0][0]), (0, 0))
+                        for i in range(game.n):
+                            for j in range(game.n):
+                                options = game.candidates[i][j]
+                                if len(options) < min_guesses[0] and len(options) > 1:
+                                    min_guesses = (len(options), (i, j))
+                        i, j = min_guesses[1]
+                        options = game.candidates[i][j]
+                        # backtracking check point:
+                        for y in options:
+                            progress_factor *= (1/len(options))
+                            game_next = deepcopy(game)
+                            game_next.place_and_erase(i, j, y)
+                            # game_next.flush_candidates() # full grid cleaning
+                            # next(solve(game_next, depth=depth+1, progress_factor=progress_factor))
+                            stacc.append((game_next, depth+1))
+                            # if solved and not all_solutions:
+                            #     break  # return 1 solution
+                            if verbose and progress > progress_update:
+                                print("%.1f" % (progress*100), end=' ...')
+                                progress_update = (
+                                    (progress//update_increment) + 1) * update_increment
+                        # return solved
+                        break
+            # return solved
+
+    calls, depth_max = 0, 0
+    progress, update_increment, progress_update = 0.0, 0.01, 0.01
+    solution_set = []
+
+    game = Sudoku(grid, **kwargs)
+    game.flush_candidates()  # check for obvious candidates
+
+    game.check_possible()
+
+    if verbose:
+        print("solving: ", end='')
+    solve(game, depth=0)
+    if verbose:
+        print("100.0")
+    solved = (len(solution_set) >= 1)
+
+    info = {
+        'calls': calls,
+        'max depth': depth_max,
+        'nsolutions': len(solution_set),
+        }
+    return solution_set, solved, info
 
 if __name__ == '__main__':
     # from https://www.sudokuwiki.org/Weekly_Sudoku.asp

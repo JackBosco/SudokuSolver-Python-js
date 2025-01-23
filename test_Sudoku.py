@@ -274,6 +274,33 @@ class SudokuTest(unittest.TestCase):
             s = Sudoku(puzzle)
             s.flush_candidates()
             self.assertTrue(s.check_possible())
+    
+    def check_null_digit(self):
+        grid = [[1, 2, 3, 4, 5, 6, 7, 8, 9],
+                [2, 0, 0, 0, 0, 0, 0, 0, 0], 
+                [3, 3, 0, 0, 0, 0, 0, 0, 0], 
+                [4, 0, 0, 0, 0, 0, 0, 0, 0], 
+                [5, 0, 0, 0, 0, 0, 0, 0, 0],
+                [6, 0, 0, 0, 0, 0, 0, 0, 0],
+                [7, 0, 0, 0, 0, 0, 0, 0, 0],
+                [8, 0, 0, 0, 0, 0, 0, 0, 0],
+                [9, 0, 0, 0, 0, 0, 0, 0, 0]]
+        s = Sudoku(grid)
+        self.assertTrue(s._null_digit == 0)
+        self.assertTrue(s._valid_digits == set(range(1, 10)))
+        grid2 = [[1, 1, 1, 1, 1, 1, 1, 2, 1],
+                 [1, 1, 1, 1, 1, 1, 1, 1, 5],
+                 [1, 2, 1, 1, 1, 1, 1, 1, 1],
+                 [1, 1, 0, 1, 1, 1, 1, 1, 1],
+                 [1, 1, 1, 1, 1, 1, 1, 1, 1],
+                 [1, 1, 1, 2, 1, 1, 1, 1, 1],
+                 [1, 1, 1, 1, 0, 1, 1, 1, 1],
+                 [1, 1, 1, 1, 1, 2, 1, 1, 1],
+                 [1, 1, 1, 1, 1, 1, 5, 1, 1]]
+        s = Sudoku(grid, null_digit=1)
+        self.assertTrue(s._null_digit == 1)
+        self.assertTrue(s._valid_digits == {0, 2, 3, 4, 5, 6, 7, 8, 9})
+        
 
 
 def suite():
@@ -293,6 +320,9 @@ def suite():
     suite.addTest(SudokuTest('impossible_x_test'))
     # end game
     suite.addTest(SudokuTest('check_done'))
+    
+    # null digit
+    suite.addTest(SudokuTest('check_null_digit'))
     return suite
 
 
